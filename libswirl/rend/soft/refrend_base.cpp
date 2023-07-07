@@ -61,7 +61,6 @@
     tag buffer is used to sort the pixels by tag as well as depth in order to support co-planar polygons.
 */
 
-
 #include <omp.h>
 #include "hw/pvr/Renderer_if.h"
 #include "hw/pvr/pvr_mem.h"
@@ -91,6 +90,11 @@ static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
 #include "refrend_base.h"
 
 bool gles_init();
+
+std::atomic<bool> DoDump;
+void refsw_dump() {
+    DoDump = true;
+}
 
 
 struct RefThreadPool {
@@ -534,6 +538,35 @@ struct refrend : Renderer
     // Render a frame
     // Called on START_RENDER write
     virtual bool RenderPVR() {
+        if (DoDump.exchange(false)) {
+            printf("doing dump... likely to not work for 16mb vram ...\n");
+            {
+                FILE *v0 = fopen("vram0.bin", "wb");
+                for (size_t i = 0; i < VRAM_SIZE/2; i+= 4)
+                {
+                    auto v = vri(vram, i);
+                    fwrite(&v, sizeof(v), 1, v0);
+                }
+                fclose(v0);
+            }
+
+            {
+                FILE *v1 = fopen("vram1.bin", "wb");
+                for (size_t i = VRAM_SIZE/2; i < VRAM_SIZE; i+= 4)
+                {
+                    auto v = vri(vram, i);
+                    fwrite(&v, sizeof(v), 1, v1);
+                }
+                fclose(v1);
+            }
+            
+            {
+                FILE* regs = fopen("pvr_regs", "wb");
+                fwrite(pvr_regs, sizeof(pvr_regs), 1, regs);
+                fclose(regs);
+            }
+        }
+
         numRenders++;
 
         u32 base = REGION_BASE;

@@ -70,14 +70,16 @@ set(TA_LLE 0x60000002)
 
 
 # options
-option(HAS_TA_LLE "Use TA LLE" OFF)
+# always on
+# option(HAS_TA_LLE "Use TA LLE" OFF)
 
+set(FEAT_TA ${TA_LLE})
 
-if(HAS_TA_LLE)
-  set(FEAT_TA ${TA_LLE})
-else()
-  set(FEAT_TA ${TA_HLE})
-endif()
+# if(HAS_TA_LLE)
+#   set(FEAT_TA ${TA_LLE})
+# else()
+#   set(FEAT_TA ${TA_HLE})
+# endif()
 
 
 ## These default to host, but are used for cross so make sure not to contaminate

@@ -290,6 +290,11 @@ void input_x11_handle()
 							x11_fullscreen = !x11_fullscreen;
 							x11_window_set_fullscreen(x11_fullscreen);
 						}
+						if (e.type == KeyRelease && e.xkey.keycode == KEY_F10) {
+							printf("calling refsw_dump\n");
+							void refsw_dump();
+							refsw_dump();
+						}
 					}
 				}
 				break;
@@ -367,6 +372,8 @@ void input_x11_handle()
 
 void input_x11_init()
 {
+	printf("F10: dump vram\n");
+
 	x11_keyboard = std::make_shared<X11KeyboardDevice>(0);
 	kb_gamepad = std::make_shared<X11KbGamepadDevice>(0);
 	GamepadDevice::Register(kb_gamepad);

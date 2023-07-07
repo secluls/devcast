@@ -7,7 +7,7 @@ if (CCACHE_FOUND)
 endif()
 
 set(TNAME reicast)
-option(LIBRETRO_CORE "Build as libretro core" OFF)
+# option(LIBRETRO_CORE "Build as libretro core" OFF)
 
 project(${TNAME})
 
