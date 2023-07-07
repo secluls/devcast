@@ -9,7 +9,9 @@
 #include <atomic>
 #include "rend/rend.h"
 
+#if !defined(REFSW_OFFLINE)
 #include "utils/glwrap/GLES.h"
+#endif
 
 #define glCheck() do { if (unlikely(settings.validate.OpenGlChecks)) { verify(glGetError()==GL_NO_ERROR); } } while(0)
 #define eglCheck() false
@@ -29,7 +31,7 @@ extern float scale_x, scale_y;
 
 
 void DrawStrips();
-
+#if !defined(REFSW_OFFLINE)
 struct PipelineShader
 {
 	GLuint program;
@@ -111,9 +113,14 @@ struct gl_ctx
 
 extern gl_ctx gl;
 extern GLuint fbTextureId;
+#endif
+
 extern float fb_scale_x, fb_scale_y;
 
+#if !defined(REFSW_OFFLINE)
 GLuint gl_GetTexture(u8* vram, TSP tsp,TCW tcw);
+#endif
+
 struct text_info {
 	u16* pdata;
 	u32 width;
@@ -124,7 +131,10 @@ enum ModifierVolumeMode { Xor, Or, Inclusion, Exclusion, ModeCount };
 
 
 bool ProcessFrame(Renderer* renderer, u8* vram, TA_context* ctx);
+
+#if !defined(REFSW_OFFLINE)
 void UpdateFogTexture(u8 *fog_table, GLenum texture_slot, GLint fog_image_format);
+#endif
 
 text_info raw_GetTexture(u8* vram, TSP tsp, TCW tcw);
 void killtex();
@@ -132,17 +142,22 @@ void CollectCleanup();
 void DoCleanup();
 void SortPParams(int first, int count);
 void SetCull(u32 CullMode);
+#if !defined(REFSW_OFFLINE)
 s32 SetTileClip(u32 val, GLint uniform);
+#endif
 void SetMVS_Mode(ModifierVolumeMode mv_mode, ISP_Modvol ispc);
 
 void BindRTT(u32 addy, u32 fbw, u32 fbh, u32 channels, u32 fmt);
 void ReadRTTBuffer(u8* vram);
 void RenderFramebuffer();
 void DrawFramebuffer(float w, float h);
+#if !defined(REFSW_OFFLINE)
 GLuint init_output_framebuffer(int width, int height);
+#endif
 bool render_output_framebuffer();
 void free_output_framebuffer();
 
+#if !defined(REFSW_OFFLINE)
 PipelineShader *GetProgram(u32 cp_AlphaTest, u32 pp_ClipTestMode,
 							u32 pp_Texture, u32 pp_UseAlpha, u32 pp_IgnoreTexA, u32 pp_ShadInstr, u32 pp_Offset,
 							u32 pp_FogCtrl, bool pp_Gouraud, bool pp_BumpMap, bool fog_clamping, bool trilinear);
@@ -198,6 +213,8 @@ extern struct ShaderUniforms_t
 
 } ShaderUniforms;
 
+#endif
+
 struct PvrTexInfo;
 template <class pixel_type> class PixelBuffer;
 typedef void TexConvFP(PixelBuffer<u16>* pb,u8* p_in,u32 Width,u32 Height);
@@ -208,8 +225,9 @@ struct TextureCacheData
 	TSP tsp;        //dreamcast texture parameters
 	TCW tcw;
 	u8* vram;
-	
+	#if !defined(REFSW_OFFLINE)
 	GLuint texID;   //gl texture
+	#endif
 	u16* pData;
 	int tex_type;
 	
@@ -250,10 +268,14 @@ struct TextureCacheData
 	}
 	
 	void Create(bool isGL);
+	#if !defined(REFSW_OFFLINE)
 	void ComputeHash();
+	#endif
 	void Update();
+	#if !defined(REFSW_OFFLINE)
 	void UploadToGPU(GLuint textype, int width, int height, u8 *temp_tex_buffer);
 	void CheckCustomTexture();
+	#endif
 	//true if : dirty or paletted texture and hashes don't match
 	bool NeedsUpdate();
 	bool Delete();

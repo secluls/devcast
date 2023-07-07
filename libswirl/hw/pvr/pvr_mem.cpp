@@ -24,7 +24,9 @@
 #include "hw/holly/holly_intc.h"
 #include "hw/holly/sb.h"
 
+#if !defined(REFSW_OFFLINE)
 static SystemBus* sb;
+#endif
 
 
 //Regs
@@ -99,6 +101,7 @@ void DYNACALL pvr_write_area1_32(void* ctx, u32 addr,u32 data)
 	*(u32*)&vram[pvr_map32(addr)] = data;
 }
 
+#if !defined(REFSW_OFFLINE)
 void TAWrite(u32 address,u32* data,u32 count, u8* vram)
 {
 	u32 address_w=address&0x1FFFFFF;//correct ?
@@ -176,6 +179,7 @@ extern "C" void DYNACALL TAWriteSQ(u32 address,u8* sqb)
 void pvr_mem_Init(SystemBus* sb) {
 	::sb = sb;
 }
+#endif
 
 #define VRAM_BANK_BIT 0x400000
 
@@ -205,4 +209,9 @@ f32 vrf(u8* vram, u32 addr)
 u32 vri(u8* vram, u32 addr)
 {
 	return *(u32*)&vram[pvr_map32(addr)];
+}
+
+u32* vrp(u8* vram, u32 addr)
+{
+	return (u32*)&vram[pvr_map32(addr)];
 }

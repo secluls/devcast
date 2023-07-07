@@ -5,13 +5,20 @@
 
 
 #include <algorithm>
-#include "glcache.h"
 #include "rend/TexCache.h"
 #include "hw/pvr/pvr_mem.h"
 #include "hw/mem/_vmem.h"
+#if !defined(REFSW_OFFLINE)
 #include "deps/libpng/png.h"
+#include "glcache.h"
 #include "deps/xxhash/xxhash.h"
 #include "CustomTexture.h"
+#else
+u32 FrameCount=1;
+#endif
+
+// Needed for TexConvFP and others
+#include "gles.h"
 
 /*
 Textures
@@ -30,6 +37,14 @@ Mipmaps
 Compression
 	look into it, but afaik PVRC is not realtime doable
 */
+
+#if defined(REFSW_OFFLINE)
+#define GLuint u32
+#define GL_UNSIGNED_SHORT_5_6_5 0
+#define GL_UNSIGNED_SHORT_5_5_5_1 1
+#define GL_UNSIGNED_SHORT_4_4_4_4 2
+#define GL_UNSIGNED_BYTE 3
+#endif
 
 #if FEAT_HAS_SOFTREND
 	#include <xmmintrin.h>
@@ -79,12 +94,16 @@ const u32 MipPoint[8] =
 const GLuint PAL_TYPE[4]=
 {GL_UNSIGNED_SHORT_5_5_5_1,GL_UNSIGNED_SHORT_5_6_5,GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_BYTE};
 
+#if !defined(REFSW_OFFLINE)
 CustomTexture custom_texture;
+#endif
 
 #if BUILD_COMPILER==COMPILER_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
+
+#if !defined(REFSW_OFFLINE)
 static void dumpRtTexture(u32 name, u32 w, u32 h) {
 	char sname[256];
 	sprintf(sname, "texdump/%x-%d.png", name, FrameCount);
@@ -125,6 +144,8 @@ static void dumpRtTexture(u32 name, u32 w, u32 h) {
 		free(rows[y]);
 	free(rows);
 }
+#endif
+
 #if BUILD_COMPILER==COMPILER_CLANG
 #pragma clang diagnostic pop
 #endif
@@ -147,7 +168,11 @@ void TextureCacheData::PrintTextureName()
 		printf(" Stride");
 
 	printf(" %dx%d @ 0x%X",8<<tsp.TexU,8<<tsp.TexV,tcw.TexAddr<<3);
+	#if !defined(REFSW_OFFLINE)
 	printf(" id=%d\n", texID);
+	#else
+	printf(" refsw-offline\n");
+	#endif
 }
 
 //Create GL texture from tsp/tcw
@@ -163,7 +188,7 @@ void TextureCacheData::Create(bool isGL)
 
 	//decode info from tsp/tcw into the texture struct
 	tex=&format[tcw.PixelFmt == PixelReserved ? Pixel1555 : tcw.PixelFmt];	//texture format table entry
-
+	
 	sa_tex = (tcw.TexAddr<<3) & VRAM_MASK;	//texture start address
 	sa = sa_tex;							//data texture start address (modified for MIPs, as needed)
 	w=8<<tsp.TexU;                   //tex width
@@ -242,18 +267,24 @@ void TextureCacheData::Create(bool isGL)
 	}
 
 	//ask GL for texture ID
+	#if !defined(REFSW_OFFLINE)
 	if (isGL) {
 		texID = glcache.GenTexture();
 		pData = 0;
 	}
 	else {
 		texID = 0;
+	#else
+		verify(!isGL);
+	#endif
 		#if FEAT_HAS_SOFTREND
 			pData = (u16*)_mm_malloc(w * h * 16, 16);
 		#else
 			die("softrend disabled, invalid codepath");
 		#endif
+	#if !defined(REFSW_OFFLINE)
 	}
+	#endif
 
 	if (size == 0) {
 		size = 4;
@@ -261,6 +292,7 @@ void TextureCacheData::Create(bool isGL)
 
 }
 
+#if !defined(REFSW_OFFLINE)
 void TextureCacheData::ComputeHash()
 {
 	texture_hash = XXH32(&vram[sa], size, 7);
@@ -269,7 +301,8 @@ void TextureCacheData::ComputeHash()
 	old_texture_hash = texture_hash;
 	texture_hash ^= tcw.full;
 }
-	
+#endif
+
 void TextureCacheData::Update()
 {
 	//texture state tracking stuff
@@ -318,8 +351,11 @@ void TextureCacheData::Update()
 			return;
 		}
 	}
+
+	#if !defined(REFSW_OFFLINE)
 	if (settings.rend.CustomTextures)
 		custom_texture.LoadCustomTextureAsync(this);
+	#endif
 
 	void *temp_tex_buffer = NULL;
 	u32 upscaled_w = w;
@@ -359,6 +395,7 @@ void TextureCacheData::Update()
 		}
 #endif
 
+#if !defined(REFSW_OFFLINE)
 		// xBRZ scaling
 		if (settings.rend.TextureUpscale > 1)
 		{
@@ -373,6 +410,7 @@ void TextureCacheData::Update()
 			upscaled_w *= settings.rend.TextureUpscale;
 			upscaled_h *= settings.rend.TextureUpscale;
 		}
+#endif
 		temp_tex_buffer = pb32.data();
 	}
 	else if (texconv != NULL)
@@ -396,6 +434,7 @@ void TextureCacheData::Update()
 	//lock the texture to detect changes in it
 	lock_block = libCore_vramlock_Lock(sa_tex,sa+size-1,this);
 
+#if !defined(REFSW_OFFLINE)
 	if (texID) {
 		//upload to OpenGL !
 		UploadToGPU(textype, upscaled_w, upscaled_h, (u8*)temp_tex_buffer);
@@ -406,6 +445,7 @@ void TextureCacheData::Update()
 		}
 	}
 	else {
+#endif
 		#if FEAT_HAS_SOFTREND
 			if (textype == GL_UNSIGNED_SHORT_5_6_5)
 				tex_type = 0;
@@ -429,9 +469,11 @@ void TextureCacheData::Update()
 		#else
 			die("Soft rend disabled, invalid code path");
 		#endif
+#if !defined(REFSW_OFFLINE)
 	}
+#endif
 }
-
+#if !defined(REFSW_OFFLINE)
 void TextureCacheData::UploadToGPU(GLuint textype, int width, int height, u8 *temp_tex_buffer)
 {
 	//upload to OpenGL !
@@ -451,7 +493,7 @@ void TextureCacheData::CheckCustomTexture()
 		custom_image_data = NULL;
 	}
 }
-
+#endif
 //true if : dirty or paletted texture and hashes don't match
 bool TextureCacheData::NeedsUpdate() {
 	bool rc = dirty
@@ -473,10 +515,11 @@ bool TextureCacheData::Delete()
 			die("softrend disabled, invalid codepath");
 		#endif
 	}
-
+#if !defined(REFSW_OFFLINE)
 	if (texID) {
 		glcache.DeleteTextures(1, &texID);
 	}
+	#endif
 	if (lock_block)
 		libCore_vramlock_Unlock_block(lock_block);
 	lock_block=0;
@@ -493,6 +536,7 @@ typedef map<u64,TextureCacheData>::iterator TexCacheIter;
 
 TextureCacheData *getTextureCacheData(u8* vram, TSP tsp, TCW tcw);
 
+#if !defined(REFSW_OFFLINE)
 void BindRTT(u32 addy, u32 fbw, u32 fbh, u32 channels, u32 fmt)
 {
 	if (gl.rtt.fbo) glDeleteFramebuffers(1,&gl.rtt.fbo);
@@ -705,6 +749,7 @@ void ReadRTTBuffer(u8* vram) {
 	if (gl.rtt.depthb) { glDeleteRenderbuffers(1,&gl.rtt.depthb); gl.rtt.depthb = 0; }
 
 }
+#endif
 
 static int TexCacheLookups;
 static int TexCacheHits;
@@ -752,6 +797,7 @@ TextureCacheData *getTextureCacheData(u8* vram, TSP tsp, TCW tcw) {
 	return tf;
 }
 
+#if !defined(REFSW_OFFLINE)
 GLuint gl_GetTexture(u8* vram, TSP tsp, TCW tcw)
 {
 	TexCacheLookups++;
@@ -785,6 +831,7 @@ GLuint gl_GetTexture(u8* vram, TSP tsp, TCW tcw)
 	//return gl texture
 	return tf->texID;
 }
+#endif
 
 
 text_info raw_GetTexture(u8* vram, TSP tsp, TCW tcw)
@@ -804,7 +851,9 @@ text_info raw_GetTexture(u8* vram, TSP tsp, TCW tcw)
 		tf->Update();
 	else
 	{
+		#if !defined(REFSW_OFFLINE)
 		tf->CheckCustomTexture();
+		#endif
 		TexCacheHits++;
 	}
 
@@ -866,7 +915,7 @@ void rend_text_invl(vram_block* bl)
 
 	libCore_vramlock_Unlock_block_wb(bl);
 }
-
+#if !defined(REFSW_OFFLINE)
 GLuint fbTextureId;
 
 void RenderFramebuffer()
@@ -1097,3 +1146,4 @@ void free_output_framebuffer()
 		}
 	}
 }
+#endif

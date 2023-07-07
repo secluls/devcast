@@ -67,11 +67,19 @@
 #include "oslib/oslib.h"
 #include "rend/TexCache.h"
 
+#include "deps/libpng/png.h"
+
 #include <cmath>
 #include <float.h>
 
+// needed for texcache
 #include "rend/gles/gles.h"
+
+#if !defined(REFSW_OFFLINE)
 #include "gui/gui.h"
+#else
+u32 decoded_colors[3][65536];
+#endif
 
 #include <memory>
 #include <atomic>
@@ -89,7 +97,9 @@ static BITMAPINFOHEADER bi = { sizeof(BITMAPINFOHEADER), 0, 0, 1, 32, BI_RGB };
 
 #include "refrend_base.h"
 
+#if !defined(REFSW_OFFLINE)
 bool gles_init();
+#endif
 
 std::atomic<bool> DoDump;
 void refsw_dump() {
@@ -721,7 +731,9 @@ struct refrend : Renderer
 
     virtual bool Init() {
 
+#if !defined(REFSW_OFFLINE)
         gles_init();
+#endif
 
 #if HOST_OS == OS_WINDOWS
         hWnd = (HWND)libPvr_GetRenderTarget();
@@ -805,7 +817,12 @@ struct refrend : Renderer
             bpp = 4;
             break;
         }
+
+        #if !defined(REFSW_OFFLINE)
         u32 addr = SPG_CONTROL.interlace && SPG_STATUS.fieldnum ? FB_R_SOF2 : FB_R_SOF1;
+        #else
+        u32 addr = FB_W_SOF1;
+        #endif
 
         static PixelBuffer<u32> pb;
         if (pb.total_pixels != width * (SPG_CONTROL.interlace ? (height * 2 + 1) : height)) {
@@ -818,6 +835,22 @@ struct refrend : Renderer
             dst += width * 4;
         }
 
+#if !defined(REFSW_OFFLINE)
+#define RED_5 0
+#define BLUE_5 10
+#define RED_6 0
+#define BLUE_6 11
+#define RED_8 0
+#define BLUE_8 16
+#else
+#define RED_5 10
+#define BLUE_5 0
+#define RED_6 11
+#define BLUE_6 0
+#define RED_8 16
+#define BLUE_8 0
+#endif
+
         switch (FB_R_CTRL.fb_depth)
         {
         case fbde_0555: // 555 RGB
@@ -825,10 +858,10 @@ struct refrend : Renderer
             {
                 for (int i = 0; i < width; i++)
                 {
-                    u16 src = pvr_read_area1_16(sh4_cpu->vram.data, addr);
-                    *dst++ = (((src >> 0) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
+                    u16 src = pvr_read_area1_16(vram, addr);
+                    *dst++ = (((src >> RED_5) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                     *dst++ = (((src >> 5) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
-                    *dst++ = (((src >> 10) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
+                    *dst++ = (((src >> BLUE_5) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                     *dst++ = 0xFF;
                     addr += bpp;
                 }
@@ -844,10 +877,10 @@ struct refrend : Renderer
             {
                 for (int i = 0; i < width; i++)
                 {
-                    u16 src = pvr_read_area1_16(sh4_cpu->vram.data, addr);
-                    *dst++ = (((src >> 0) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
+                    u16 src = pvr_read_area1_16(vram, addr);
+                    *dst++ = (((src >> RED_6) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                     *dst++ = (((src >> 5) & 0x3F) << 2) + (FB_R_CTRL.fb_concat >> 1);
-                    *dst++ = (((src >> 11) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
+                    *dst++ = (((src >> BLUE_6) & 0x1F) << 3) + FB_R_CTRL.fb_concat;
                     *dst++ = 0xFF;
                     addr += bpp;
                 }
@@ -865,17 +898,17 @@ struct refrend : Renderer
                 {
                     if (addr & 1)
                     {
-                        u32 src = pvr_read_area1_32(sh4_cpu->vram.data, addr - 1);
-                        *dst++ = src;
+                        u32 src = pvr_read_area1_32(vram, addr - 1);
+                        *dst++ = src >> RED_8;
                         *dst++ = src >> 8;
-                        *dst++ = src >> 16;
+                        *dst++ = src >> BLUE_8;
                     }
                     else
                     {
-                        u32 src = pvr_read_area1_32(sh4_cpu->vram.data, addr);
-                        *dst++ = src >> 8;
+                        u32 src = pvr_read_area1_32(vram, addr);
+                        *dst++ = src >> (RED_8 + 8);
                         *dst++ = src >> 16;
-                        *dst++ = src >> 24;
+                        *dst++ = src >> (BLUE_8 + 8);
                     }
                     *dst++ = 0xFF;
                     addr += bpp;
@@ -892,10 +925,10 @@ struct refrend : Renderer
             {
                 for (int i = 0; i < width; i++)
                 {
-                    u32 src = pvr_read_area1_32(sh4_cpu->vram.data, addr);
-                    *dst++ = src;
+                    u32 src = pvr_read_area1_32(vram, addr);
+                    *dst++ = src >> RED_8;
                     *dst++ = src >> 8;
-                    *dst++ = src >> 16;
+                    *dst++ = src >> BLUE_8;
                     *dst++ = 0xFF;
                     addr += bpp;
                 }
@@ -908,7 +941,55 @@ struct refrend : Renderer
             break;
         }
         
-#if HOST_OS == OS_WINDOWS
+#if defined(REFSW_OFFLINE)
+    char sname[256];
+	sprintf(sname, "FB_W_SOF1.png");
+	FILE *fp = fopen(sname, "wb");
+    if (fp == NULL)
+    	return;
+
+    auto CurrentRow = (png_bytep)pb.data();
+
+    if (SPG_CONTROL.interlace & SPG_STATUS.fieldnum) {
+        CurrentRow += width * 4;
+    }
+
+	png_bytepp rows = (png_bytepp)malloc(height * sizeof(png_bytep));
+	for (int y = 0; y < height; y++) {
+		rows[y] = CurrentRow;//(png_bytep)malloc(w * 4);	// 32-bit per pixel
+		//glReadPixels(0, y, w, 1, GL_RGBA, GL_UNSIGNED_BYTE, rows[y]);
+        CurrentRow += width * 4;
+        if (SPG_CONTROL.interlace) {
+            CurrentRow += width * 4;
+        }
+	}
+
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+
+    png_init_io(png_ptr, fp);
+
+
+    /* write header */
+    png_set_IHDR(png_ptr, info_ptr, width, height,
+                         8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
+                         PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+    png_write_info(png_ptr, info_ptr);
+
+
+            /* write bytes */
+    png_write_image(png_ptr, rows);
+
+    /* end write */
+    png_write_end(png_ptr, NULL);
+    fclose(fp);
+
+/*
+	for (int y = 0; y < h; y++)
+		free(rows[y]);*/
+	free(rows);
+#elif HOST_OS == OS_WINDOWS
         u32 *psrc = pb.data();
         SetDIBits(hmem, hBMP, 0, SPG_CONTROL.interlace ? height * 2 : height, psrc, (BITMAPINFO*)& bi, DIB_RGB_COLORS);
 

@@ -8,6 +8,8 @@ Workdir/vmu*
 Workdir/webui*
 Workdir/emu.cfg
 Workdir/lib*ant.properties
+refsw-offline/refsw-offline
+refsw-offline/FB_W_SOF1.png
 
 # iOS General
 .DS_Store

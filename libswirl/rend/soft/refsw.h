@@ -6,6 +6,8 @@
 
 #include "refrend_base.h"
 #include "hw/pvr/ta_ctx.h" // for Vertex
+
+// For texture cache
 #include "rend/gles/gles.h"
 
 

@@ -124,10 +124,12 @@ void palette_update()
 		}
 		break;
 	}
+	#if !defined(REFSW_OFFLINE)
 	for (int i = 0; i < 64; i++)
 		pal_hash_16[i] = XXH32(&palette32_ram[i << 4], 16 * 4, 7);
 	for (int i = 0; i < 4; i++)
 		pal_hash_256[i] = XXH32(&palette32_ram[i << 8], 256 * 4, 7);
+	#endif
 }
 
 
@@ -187,6 +189,7 @@ inline bool IsInRange(vram_block* block,u32 offset)
 	return (block->start<=offset) && (block->end>=offset);
 }
 
+#if !defined(REFSW_OFFLINE)
 
 vram_block* libCore_vramlock_Lock(u32 start_offset64,u32 end_offset64,void* userdata)
 {
@@ -405,3 +408,5 @@ void UpscalexBRZ(int factor, u32* source, u32* dest, int width, int height, bool
 	xbrz::scale(factor, source, dest, width, height, has_alpha ? xbrz::ColorFormat::ARGB : xbrz::ColorFormat::RGB, xbrz_cfg);
 #endif
 }
+
+#endif

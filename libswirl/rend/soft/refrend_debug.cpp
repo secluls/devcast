@@ -11,6 +11,7 @@
 #endif
 
 #include "refrend_base.h"
+// needed for texcache
 #include "rend/gles/gles.h"
 
 #include <memory>

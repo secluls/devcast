@@ -13,6 +13,7 @@
 u32 pvr_map32(u32 offset32);
 f32 vrf(u8* vram, u32 addr);
 u32 vri(u8* vram, u32 addr);
+u32* vrp(u8* vram, u32 addr);
 
 //vram 32-64b
 

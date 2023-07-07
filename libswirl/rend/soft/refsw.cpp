@@ -316,7 +316,7 @@ struct refsw_impl : refsw
     }
 };
 
-#if FEAT_TA == TA_LLE
+#if FEAT_TA == TA_LLE || defined(REFSW_OFFLINE)
 
 Renderer* rend_refsw(u8* vram) {
     return rend_refred_base(vram, [=]() { 

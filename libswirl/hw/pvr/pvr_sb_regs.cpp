@@ -31,6 +31,7 @@ bool fog_needs_update = true;
 
 u8 pvr_regs[pvr_RegSize];
 
+#if !defined(REFSW_OFFLINE)
 struct PVRDevice : MMIODevice {
     void DMAC_Ch2St(u8* vram)
     {
@@ -449,3 +450,4 @@ struct PVRDevice : MMIODevice {
 MMIODevice* Create_PVRDevice(SuperH4Mmr* sh4mmr, SystemBus* sb, ASIC* asic, SPG* spg, u8* mram, u8* vram) {
     return new PVRDevice(sh4mmr, sb, asic, spg, mram, vram);
 }
+#endif

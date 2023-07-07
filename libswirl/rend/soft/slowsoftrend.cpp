@@ -27,8 +27,10 @@
 
 #include <cmath>
 
+#if !defined(REFSW_OFFLINE)
 #include "rend/gles/gles.h"
 #include "gui/gui.h"
+#endif
 
 extern u32 decoded_colors[3][65536];
 
