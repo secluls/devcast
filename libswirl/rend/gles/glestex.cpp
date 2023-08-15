@@ -358,13 +358,13 @@ void TextureCacheData::Update()
 	#else
 		if (tcw.VQ_Comp) {
 			char temp[512];
-			sprintf(temp,"vq_data_%x.bin", indirect_color_ptr);
+			sprintf(temp,"dumps/vq_%x_data_%d_%d.bin", indirect_color_ptr, w, h);
 
 			auto vq = fopen(temp, "wb");
 			fwrite(vq_codebook, 1, 2048, vq);
 			fclose(vq);
 
-			sprintf(temp,"vq_index%x.bin", sa);
+			sprintf(temp,"dumps/vq_%x_index_%d_%d.bin", indirect_color_ptr, w, h);
 			auto vi = fopen(temp, "wb");
 			fwrite(vram + sa, 1, size, vi);
 			fclose(vi);
