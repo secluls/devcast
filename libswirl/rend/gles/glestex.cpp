@@ -355,6 +355,20 @@ void TextureCacheData::Update()
 	#if !defined(REFSW_OFFLINE)
 	if (settings.rend.CustomTextures)
 		custom_texture.LoadCustomTextureAsync(this);
+	#else
+		if (tcw.VQ_Comp) {
+			char temp[512];
+			sprintf(temp,"vq_data_%x.bin", indirect_color_ptr);
+
+			auto vq = fopen(temp, "wb");
+			fwrite(vq_codebook, 1, 2048, vq);
+			fclose(vq);
+
+			sprintf(temp,"vq_index%x.bin", sa);
+			auto vi = fopen(temp, "wb");
+			fwrite(vram + sa, 1, size, vi);
+			fclose(vi);
+		}
 	#endif
 
 	void *temp_tex_buffer = NULL;
