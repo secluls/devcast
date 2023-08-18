@@ -355,20 +355,6 @@ void TextureCacheData::Update()
 	#if !defined(REFSW_OFFLINE)
 	if (settings.rend.CustomTextures)
 		custom_texture.LoadCustomTextureAsync(this);
-	#else
-		if (tcw.VQ_Comp) {
-			char temp[512];
-			sprintf(temp,"dumps/vq_%x_data_%d_%d.bin", indirect_color_ptr, w, h);
-
-			auto vq = fopen(temp, "wb");
-			fwrite(vq_codebook, 1, 2048, vq);
-			fclose(vq);
-
-			sprintf(temp,"dumps/vq_%x_index_%d_%d.bin", indirect_color_ptr, w, h);
-			auto vi = fopen(temp, "wb");
-			fwrite(vram + sa, 1, size, vi);
-			fclose(vi);
-		}
 	#endif
 
 	void *temp_tex_buffer = NULL;
@@ -480,7 +466,25 @@ void TextureCacheData::Update()
 					data[3] = decoded_colors[tex_type][tex_data[(x + 0) % w + (y + 0) % h * w]];
 				}
 			}
-		#else
+
+			if (tcw.VQ_Comp)
+			{
+				char temp[512];
+				sprintf(temp, "dumps/vq_%x_%d_%d.table", indirect_color_ptr, w, h);
+				{
+					auto vq = fopen(temp, "wb");
+					fwrite(vq_codebook, 1, 2048, vq);
+					fclose(vq);
+				}
+
+				{
+					sprintf(temp, "dumps/vq_%x_%d_%d.index", indirect_color_ptr, w, h);
+					auto vi = fopen(temp, "wb");
+					fwrite(vram + sa_tex, 1, size, vi);
+					fclose(vi);
+				}
+			}
+#else
 			die("Soft rend disabled, invalid code path");
 		#endif
 #if !defined(REFSW_OFFLINE)
