@@ -1,0 +1,45 @@
+name: Build Reicast
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  build:
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        platform: [Win32, x64]
+        configuration: [RelWithDebInfo]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create Build Directory
+      run: mkdir build
+      shell: cmd
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G "Visual Studio 16 2019" -A "${{ matrix.platform }}" -DCMAKE_CONFIGURATION_TYPES=${{ matrix.configuration }}
+      shell: cmd
+
+    - name: Build Solution
+      run: |
+        cd build
+        msbuild reicast.sln /p:Configuration=${{ matrix.configuration }}
+      shell: cmd
+
+    - name: Prepare Artifacts
+      run: |
+        mkdir artifacts
+        move build\${{ matrix.configuration }}\reicast.exe artifacts\reicast-win_${{ matrix.platform }}-${{ matrix.configuration }}-${{ github.sha }}.exe
+      shell: cmd
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: reicast-win_${{ matrix.platform }}-${{ matrix.configuration }}-${{ github.sha }}
+        path: artifacts
